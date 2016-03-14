@@ -1,0 +1,15 @@
+package:
+  name: conda-multisrc-example
+  version: "0.1"
+
+source:
+  fn: llvm-3.8.0.src.tar.xz
+  url: http://llvm.org/releases/3.8.0/llvm-3.8.0.src.tar.xz
+  md5: 07a7a74f3c6bd65de4702bf941b511a0  
+  
+extra:
+  sources:
+    cfe:
+      fn: cfe-3.8.0.src.tar.xz
+      url: http://llvm.org/releases/3.8.0/cfe-3.8.0.src.tar.xz
+      md5: cc99e7019bb74e6459e80863606250c5

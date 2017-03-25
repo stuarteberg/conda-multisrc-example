@@ -38,24 +38,47 @@ ${CONDA_PYTHON} ${RECIPE_DIR}/download-extra-sources.py
 """
 import os
 from conda_build import source
+from conda_build import config
 from conda_build.metadata import MetaData
+
+def split_path(path):
+    bits = []
+    while path != '/':
+        path, tail = os.path.split(path)
+        bits.append(tail)
+    bits.append(path)
+    bits.reverse()
+    return bits
 
 
 def main():
-    recipe_dir = os.environ["RECIPE_DIR"]
-    src_dir = os.environ["SRC_DIR"]
-    main_work_dir = source.WORK_DIR
+    cwd = os.getcwd()
+    bits = split_path(cwd)
 
+    croot = os.path.join(*bits[:-3])
+    build_id = bits[-3]
+
+    # Need an extra directory in work_dir so conda extract the package to the
+    # same level as the existing one.
+    multi_pkg = os.path.join(*bits[:-1], 'multi-pkg')
+    if not os.path.exists(multi_pkg):
+        os.makedirs(multi_pkg)
+
+    # Get the extra_source section of the metadata.
+    recipe_dir = os.environ["RECIPE_DIR"]
     metadata = MetaData(recipe_dir)
     extra_sources_sections = metadata.get_section('extra')['sources']
 
     for name, source_section in extra_sources_sections.items():
-        # Override the location to clone into
-        source.WORK_DIR = main_work_dir + '/' + name
-        os.makedirs(source.WORK_DIR)
+        # Create a fake metadata which contains the extra source_section.
+        newmetadata = metadata.copy()
+        newmetadata.meta['source'] = source_section
+        newconfig = config.get_or_merge_config(
+            newmetadata.config, croot=croot, build_id=build_id)
 
-        # Download source
-        source.provide(recipe_dir, source_section)
+        # Download+extract source.
+        source.provide(newmetadata, newconfig)
+
 
 if __name__ == "__main__":
     main()

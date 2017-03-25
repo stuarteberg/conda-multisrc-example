@@ -36,6 +36,8 @@ ${CONDA_PYTHON} ${RECIPE_DIR}/download-extra-sources.py
 
 # ... build commands go here ...
 """
+from __future__ import print_function
+
 import os
 from conda_build import source
 from conda_build import config
@@ -52,6 +54,8 @@ def split_path(path):
 
 
 def main():
+    print()
+    print("Getting extra source packages.")
     cwd = os.getcwd()
     bits = split_path(cwd)
 
@@ -70,6 +74,8 @@ def main():
     extra_sources_sections = metadata.get_section('extra')['sources']
 
     for name, source_section in extra_sources_sections.items():
+        print("Extra source: %s" % name)
+        print("-"*75)
         # Create a fake metadata which contains the extra source_section.
         newmetadata = metadata.copy()
         newmetadata.meta['source'] = source_section
@@ -78,6 +84,10 @@ def main():
 
         # Download+extract source.
         source.provide(newmetadata, newconfig)
+        print("-"*75)
+
+    print("Extra source packages download and extracted!")
+    print()
 
 
 if __name__ == "__main__":

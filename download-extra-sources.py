@@ -15,8 +15,8 @@ package:
 source:
   fn: llvm-3.8.0.src.tar.xz
   url: http://llvm.org/releases/3.8.0/llvm-3.8.0.src.tar.xz
-  md5: 07a7a74f3c6bd65de4702bf941b511a0  
-  
+  md5: 07a7a74f3c6bd65de4702bf941b511a0
+
 extra:
   sources:
     cfe:
@@ -45,17 +45,17 @@ def main():
     recipe_dir = os.environ["RECIPE_DIR"]
     src_dir = os.environ["SRC_DIR"]
     main_work_dir = source.WORK_DIR
-    
+
     metadata = MetaData(recipe_dir)
     extra_sources_sections = metadata.get_section('extra')['sources']
-    
+
     for name, source_section in extra_sources_sections.items():
         # Override the location to clone into
         source.WORK_DIR = main_work_dir + '/' + name
         os.makedirs(source.WORK_DIR)
-    
+
         # Download source
         source.provide(recipe_dir, source_section)
-    
+
 if __name__ == "__main__":
     main()

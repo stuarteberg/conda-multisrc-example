@@ -43,6 +43,14 @@ from conda_build import source
 from conda_build import config
 from conda_build.metadata import MetaData
 
+class SpecialConfig(config.Config):
+    """Allow overriding the work_dir property."""
+
+    @property
+    def work_dir(self):
+        return self._work_dir
+
+
 def split_path(path):
     bits = []
     while path != '/':
@@ -53,42 +61,90 @@ def split_path(path):
     return bits
 
 
+def has_only_one_dir(path):
+    """
+    Conda has this weird thing where if the workdir is only a single directory,
+    it'll change into it and use that as the workdir.
+    """
+    lst = [fn for fn in os.listdir(path) if not fn.startswith('.')]
+    if len(lst) != 1:
+        return ''
+    dir_path = os.path.join(path, lst[0])
+    if not os.path.isdir(dir_path):
+        return ''
+    return dir_path
+
+
 def main():
     print()
     print("Getting extra source packages.")
+    # Force verbose mode
     config.verbose = True
     cwd = os.getcwd()
-    bits = split_path(cwd)
 
-    croot = os.path.join(*bits[:-3])
-    build_id = bits[-3]
-
-    # Need an extra directory in work_dir so conda extract the package to the
-    # same level as the existing one.
-    multi_pkg = os.path.join(*bits[:-1], 'multi-pkg')
-    if not os.path.exists(multi_pkg):
-        os.makedirs(multi_pkg)
-
-    # Get the extra_source section of the metadata.
+    # Get the metadata for the recipe
     recipe_dir = os.environ["RECIPE_DIR"]
     metadata = MetaData(recipe_dir)
-    extra_sources_sections = metadata.get_section('extra')['sources']
+    print(metadata.name())
+    print("-"*75)
+    print('       cwd:', cwd)
 
+    # Figure out the work_dir
+    # Look upwards for a directory with the name 'work'.
+    # FIXME: Why does metadata.config.work_dir not return the correct
+    # directory?
+    bits = split_path(cwd)
+    dirname = []
+    while bits and bits[-1] != 'work':
+        dirname.insert(0, bits.pop(-1))
+    dirname = os.path.join(*dirname, '')
+
+    work_dir = bits.pop(-1)
+    assert work_dir == 'work'
+
+    build_id = bits.pop(-1)
+    croot = os.path.join(*bits)
+
+    work_dir = os.path.join(croot, build_id, 'work')
+    if has_only_one_dir(work_dir):
+        real_work_dir = work_dir
+    else:
+        real_work_dir = os.path.join(croot, build_id)
+
+    print('  work dir:', real_work_dir)
+    print('conda root:', croot)
+    print('  build id:', build_id)
+    print('   src dir:', dirname)
+
+    extra_sources_sections = metadata.get_section('extra')['sources']
     for name, source_section in extra_sources_sections.items():
+        print()
         print("Extra source: %s" % name)
         print("-"*75)
         # Create a fake metadata which contains the extra source_section.
         newmetadata = metadata.copy()
         newmetadata.meta['source'] = source_section
-        newconfig = config.get_or_merge_config(
-            newmetadata.config, croot=croot, build_id=build_id)
-        newconfig.verbose = True
+
+        if has_only_one_dir(work_dir):
+            extra_work_dir = real_work_dir
+        else:
+            extra_work_dir = os.path.join(real_work_dir, name)
+
+        newmetadata.config.__class__ = SpecialConfig
+        newmetadata.config._work_dir = extra_work_dir
+        print("Work Directory:", newmetadata.config.work_dir)
 
         # Download+extract source.
-        source.provide(newmetadata, newconfig)
+        source.provide(newmetadata, newmetadata.config)
+
         print("-"*75)
 
+    print()
     print("Extra source packages download and extracted!")
+    print()
+    print("Work Directory contents (%s)" % real_work_dir)
+    print("-"*75)
+    print(os.listdir(real_work_dir))
     print()
 
 

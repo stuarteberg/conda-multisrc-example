@@ -56,6 +56,7 @@ def split_path(path):
 def main():
     print()
     print("Getting extra source packages.")
+    config.verbose = True
     cwd = os.getcwd()
     bits = split_path(cwd)
 
@@ -81,6 +82,7 @@ def main():
         newmetadata.meta['source'] = source_section
         newconfig = config.get_or_merge_config(
             newmetadata.config, croot=croot, build_id=build_id)
+        newconfig.verbose = True
 
         # Download+extract source.
         source.provide(newmetadata, newconfig)
